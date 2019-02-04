@@ -242,7 +242,7 @@ def generate_images(
 
             # LOAD IMAGE ------------------------------
             print("Loading " + load_path)
-            img, weapons = discretize(Image.open(img_path), number_of_weapons)
+            img, weapons = discretize(Image.open(load_path), number_of_weapons)
 
         elif d in ["y", "Y"]:
             from shutil import rmtree
