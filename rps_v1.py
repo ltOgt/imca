@@ -260,12 +260,14 @@ def generate_images(
     _l_t = loss_threshold
 
     # save initial image as well
-    file_name = gen_file_name(loc_path, 0, iterations + 1)
-    img.save(
-        file_name,
-        "PNG"
-    )
-    print("\tSaved to " + file_name)
+    if itteration == 1:
+        # Only if not a continuation from before
+        file_name = gen_file_name(loc_path, 0, iterations + 1)
+        img.save(
+            file_name,
+            "PNG"
+        )
+        print("\tSaved to " + file_name)
 
     # generate following images
     for iteration in range(iteration, iterations + 1):
