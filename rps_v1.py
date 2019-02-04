@@ -138,16 +138,10 @@ def discretize(src, levels):
     return out, weapons
 
 
-def save_file(img, loc_path, number, total):
-    file_name = loc_path + "/" + "0" * (
+def gen_file_name(loc_path, number, total):
+    return loc_path + "/" + "0" * (
         len(str(total)) - len(str(number))
     ) + str(number) + ".png"
-    img.save(
-        file_name,
-        "PNG"
-    )
-    print("\tSaved to " + file_name)
-
 
 
 import numpy as np
@@ -195,25 +189,86 @@ def generate_images(
     )
 
     print(">>> " + loc_path)
+
+    iteration = 1
+
     if os.path.isdir(loc_path):
-        d = input("Directory already exists. Create anyway? [y/n]")
-        if d not in ["y", "Y"]:
+        d = input("Directory already exists. Create anyway? [y/n/continue] ")
+        if d.lower() in ["c", "continue"]:
+            max_it = 0
+            load_file = ""
+            for f in os.listdir(loc_path):
+                print(f)
+                # find largest existing iteration
+                if not os.path.isfile(loc_path + "/" + f):
+                    continue
+                try:
+                    # get only the number component
+                    new_ = int(f.split(".")[0])
+                    if new_ > max_it:
+                        load_file = f
+                        max_it = new_
+                except Exception:
+                    continue
+            # last itteration and the image of that itteration
+            iteration = max_it + 1
+            load_path = loc_path + '/' + load_file
+
+            # ask user how to proceed
+            if iteration < iterations:
+                d = input("{iteration}(+initial) iterations exist. Add {iterations} more (1) or fill up to {iterations} (2): ".format(
+                    iteration=iteration-1,
+                    iterations=iterations
+                ))
+                if d == "1":
+                    iterations = iterations + iteration
+                elif d == "2":
+                    # Nothing needed to do.
+                    pass
+                else:
+                    print("Not an option! Exit...")
+                    return
+            else:
+                d = input("{iteration}(+initial) iterations exist. Add {iterations}? [y/n] ".format(
+                    iteration=iteration-1,
+                    iterations=iterations
+                ))
+                if d in ["y", "Y"]:
+                    iterations = iterations + iteration
+                else:
+                    print("Exit...")
+                    return
+            print("Starting: {}/{}".format(iteration, iterations))
+
+            # LOAD IMAGE ------------------------------
+            print("Loading " + load_path)
+            img, weapons = discretize(Image.open(img_path), number_of_weapons)
+
+        elif d in ["y", "Y"]:
+            from shutil import rmtree
+            abs_path=os.path.abspath(loc_path)
+            rmtree(abs_path)
+            os.mkdir(loc_path)
+        else:
             print("Aborted!")
             return
-        from shutil import rmtree
-        abs_path=os.path.abspath(loc_path)
-        rmtree(abs_path)
-    os.mkdir(loc_path)
+    else:
+        os.mkdir(loc_path)
 
     total_pixels = img.width * img.height
 
     _l_t = loss_threshold
 
     # save initial image as well
-    save_file(img, loc_path, 0, iterations + 1)
+    file_name = gen_file_name(loc_path, 0, iterations + 1)
+    img.save(
+        file_name,
+        "PNG"
+    )
+    print("\tSaved to " + file_name)
 
     # generate following images
-    for iteration in range(1, iterations + 1):
+    for iteration in range(iteration, iterations + 1):
         print("Iteration {}/{};".format(
             "0"*(len(str(iterations)) - len(str(iteration))) + str(iteration),
             iterations
@@ -263,7 +318,12 @@ def generate_images(
             finished_pixels += 1
 
         # save after every pixel has been updated
-        save_file(img, loc_path, iteration, iterations + 1)
+        file_name = gen_file_name(loc_path, iteration, iterations + 1)
+        img.save(
+            file_name,
+            "PNG"
+        )
+        print("\tSaved to " + file_name)
 
     # Generate GIF
     os.system("ffmpeg -i "+loc_path+"/%0"+str(len(str(iterations)))+"d.png "+loc_path+".gif")
