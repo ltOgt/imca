@@ -138,6 +138,18 @@ def discretize(src, levels):
     return out, weapons
 
 
+def save_file(img, loc_path, number, total):
+    file_name = loc_path + "/" + "0" * (
+        len(str(total)) - len(str(number))
+    ) + str(number) + ".png"
+    img.save(
+        file_name,
+        "PNG"
+    )
+    print("\tSaved to " + file_name)
+
+
+
 import numpy as np
 from PIL import Image
 import os
@@ -197,7 +209,11 @@ def generate_images(
 
     _l_t = loss_threshold
 
-    for iteration in range(iterations):
+    # save initial image as well
+    save_file(img, loc_path, 0, iterations + 1)
+
+    # generate following images
+    for iteration in range(1, iterations + 1):
         print("Iteration {}/{};".format(
             "0"*(len(str(iterations)) - len(str(iteration))) + str(iteration),
             iterations
@@ -247,14 +263,7 @@ def generate_images(
             finished_pixels += 1
 
         # save after every pixel has been updated
-        file_name = loc_path + "/" + "0" * (
-            len(str(iterations)) - len(str(iteration))
-        ) + str(iteration) + ".png"
-        img.save(
-            file_name,
-            "PNG"
-        )
-        print("\tSaved to " + file_name)
+        save_file(img, loc_path, iteration, iterations + 1)
 
     # Generate GIF
     os.system("ffmpeg -i "+loc_path+"/%0"+str(len(str(iterations)))+"d.png "+loc_path+".gif")
