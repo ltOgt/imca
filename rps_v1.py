@@ -210,7 +210,7 @@ def generate_images(
                         max_it = new_
                 except Exception:
                     continue
-            # last itteration and the image of that itteration
+            # last iteration and the image of that iteration
             iteration = max_it + 1
             load_path = loc_path + '/' + load_file
 
@@ -260,7 +260,7 @@ def generate_images(
     _l_t = loss_threshold
 
     # save initial image as well
-    if itteration == 1:
+    if iteration == 1:
         # Only if not a continuation from before
         file_name = gen_file_name(loc_path, 0, iterations + 1)
         img.save(
