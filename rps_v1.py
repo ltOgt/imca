@@ -83,42 +83,42 @@ def defend_against_neighbours(
     attackers = [
         # (-X,-Y) TOP-LEFT
         (
-            bool(nh_seed[0]) and can_up and can_left,
+            int(nh_seed[0]) and can_up and can_left,
             ((x-1) % x_len, (y-1) % y_len)
         ),
         # ( X,-Y) TOP
         (
-            bool(nh_seed[1]) and can_up,
+            int(nh_seed[1]) and can_up,
             (x, (y-1) % y_len)
         ),
         # (+X,-Y) TOP-RIGHT
         (
-            bool(nh_seed[2]) and can_up and can_right,
+            int(nh_seed[2]) and can_up and can_right,
             ((x+1) % x_len, (y-1) % y_len)
         ),
         # (+x, Y) RIGHT
         (
-            bool(nh_seed[3]) and can_right,
+            int(nh_seed[3]) and can_right,
             ((x+1) % x_len, y)
         ),
         # (+X,+Y) BOTTOM-RIGHT
         (
-            bool(nh_seed[4]) and can_down and can_right,
+            int(nh_seed[4]) and can_down and can_right,
             ((x+1) % x_len, (y+1) % y_len)
         ),
         # ( X,+Y) BOTTOM
         (
-            bool(nh_seed[5]) and can_down,
+            int(nh_seed[5]) and can_down,
             (x, (y+1) % y_len)
         ),
         # (-X,+Y) BOTTOM-LEFT
         (
-            bool(nh_seed[6]) and can_down and can_left,
+            int(nh_seed[6]) and can_down and can_left,
             ((x-1) % x_len, (y+1) % y_len)
         ),
         # (-X, Y) LEFT
         (
-            bool(nh_seed[7]) and can_left,
+            int(nh_seed[7]) and can_left,
             ((x-1) % x_len, y)
         ),
     ]
