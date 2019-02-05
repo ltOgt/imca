@@ -35,7 +35,7 @@ The next iteration can either be calculated based on a copy of the previous iter
 
 ![](examples/grid.jpg)
 
-`$ python rps_v1.py --i 100 --nw 20 --wr-pre 0 --wr-post 18 --lt 1 --f-lt 1 --overlap_x 1 --overlap_y 1 --new-image 1 cat.png`
+`$ python rps_v1.py --i 1000 --nw 20 --wr-pre 0 --wr-post 18 --lt 1 --f-lt 1 --overlap_x 1 --overlap_y 1 --new-image 1 grid.jpg`
 
 ![](examples/rps-Src_grid-Lvl_20-Rng_0_18-TH_1_1-Ref_1.gif)
 
