@@ -20,6 +20,7 @@ def defend_against_neighbours(
     number_of_weapons, weapon_range,
     loss_threshold,
     overlap_x=True, overlap_y=True,
+    nh_seed="01010101"
 ):
     """Get the values from all neighbours
 
@@ -47,6 +48,12 @@ def defend_against_neighbours(
         overlap_y:
             (bool)
             Whether or not y-neighbours should wrap at the edges.
+        nh_seed:
+            (str)
+            Neighbourhood seed: Which neighbours are able to attack the current pixel.
+            Default: 01010101
+            "{top-left}{top}{top-right}{right}{right-bottom}{bottom}{left-bottom}{left}"
+            Input is EXPECTED padded with 0 to len()=8 or cut off after 8.
 
         RETURNS
         The new value for the specified coordinate.
@@ -62,71 +69,73 @@ def defend_against_neighbours(
     # ============================================================ calculation
     # NOTE: getpixel returns index of the palette if palette is used
     own_weapon = src.getpixel(xy)
-
-    def on_loss(enemy_weapon):
-        return enemy_weapon
-
     losses = 0
 
-    # X- : add x above
-    if overlap_x or x > 0:
-        enemy_xy = ((x-1) % x_len, y)
-        enemy_weapon = src.getpixel(enemy_xy)
-        result = defend(
-            own_weapon=own_weapon,
-            enemy_weapon=enemy_weapon,
-            number_of_weapons=number_of_weapons,
-            weapon_range=weapon_range
-        )
-        if not result:
-            losses += 1
-            if losses == loss_threshold:
-                return on_loss(enemy_weapon)
+    # allowed to wrap or no border to left
+    can_left  = overlap_x or x > 0
+    # allowed to wrap or no border above
+    can_up    = overlap_y or y > 0
+    # allowed to wrap or no border to right
+    can_right = overlap_x or x < x_max
+    # allowed to wrap or no border below
+    can_down  = overlap_y or y < y_max
 
-    # X+ : add x below
-    if overlap_x or x < x_max:
-        enemy_xy = ((x+1) % x_len, y)
-        enemy_weapon = src.getpixel(enemy_xy)
-        result = defend(
-            own_weapon=own_weapon,
-            enemy_weapon=enemy_weapon,
-            number_of_weapons=number_of_weapons,
-            weapon_range=weapon_range
-        )
-        if not result:
-            losses += 1
-            if losses == loss_threshold:
-                return on_loss(enemy_weapon)
+    attackers = [
+        # (-X,-Y) TOP-LEFT
+        (
+            can_up and can_left,
+            ((x-1) % x_len, (y-1) % y_len)
+        ),
+        # ( X,-Y) TOP
+        (
+            can_up,
+            (x, (y-1) % y_len)
+        ),
+        # (+X,-Y) TOP-RIGHT
+        (
+            can_up and can_right,
+            ((x+1) % x_len, (y-1) % y_len)
+        ),
+        # (+x, Y) RIGHT
+        (
+            can_right,
+            ((x+1) % x_len, y)
+        ),
+        # (+X,+Y) BOTTOM-RIGHT
+        (
+            can_down and can_right,
+            ((x+1) % x_len, (y+1) % y_len)
+        ),
+        # ( X,+Y) BOTTOM
+        (
+            can_down,
+            (x, (y+1) % y_len)
+        ),
+        # (-X,+Y) BOTTOM-LEFT
+        (
+            can_down and can_left,
+            ((x-1) % x_len, (y+1) % y_len)
+        ),
+        # (-X, Y) LEFT
+        (
+            can_left,
+            ((x-1) % x_len, y)
+        ),
+    ]
 
-    # Y- : add y left
-    if overlap_y or y > 0:
-        enemy_xy = (x, (y-1) % y_len)
-        enemy_weapon = src.getpixel(enemy_xy)
-        result = defend(
-            own_weapon=own_weapon,
-            enemy_weapon=enemy_weapon,
-            number_of_weapons=number_of_weapons,
-            weapon_range=weapon_range
-        )
-        if not result:
-            losses += 1
-            if losses == loss_threshold:
-                return on_loss(enemy_weapon)
-
-    # Y+ : add y right
-    if overlap_y or y < y_max:
-        enemy_xy = (x, (y+1) % y_len)
-        enemy_weapon = src.getpixel(enemy_xy)
-        result = defend(
-            own_weapon=own_weapon,
-            enemy_weapon=enemy_weapon,
-            number_of_weapons=number_of_weapons,
-            weapon_range=weapon_range
-        )
-        if not result:
-            losses += 1
-            if losses == loss_threshold:
-                return on_loss(enemy_weapon)
+    for attacker in attackers:
+        if attacker[0]:
+            enemy_weapon = src.getpixel(attacker[1])
+            won = defend(
+                own_weapon=own_weapon,
+                enemy_weapon=enemy_weapon,
+                number_of_weapons=number_of_weapons,
+                weapon_range=weapon_range
+            )
+            if not won:
+                losses += 1
+                if losses >= loss_threshold:
+                    return enemy_weapon
 
     return own_weapon
 
@@ -158,6 +167,7 @@ def generate_images(
     fixed_threshold,
     overlap_x,
     overlap_y,
+    nh_seed,
     new_image
 ):
     print("Running imca: rock-paper-scissor\n")
@@ -167,6 +177,7 @@ def generate_images(
     print("> Fix threshold:\n  : " + str(fixed_threshold))
     print("> Overlap-x:\n  : " + str(overlap_x))
     print("> Overlap-y:\n  : " + str(overlap_y))
+    print("> Neighbourhood-Seed:\n  : " + str(nh_seed))
     print("> New image:\n  : " + str(new_image))
 
     print("> Loading image: " + img_path)
@@ -177,7 +188,7 @@ def generate_images(
     print("> Discretizing image to {} levels: \n  : {}".format(number_of_weapons, weapons))
 
     # Create out folder
-    loc_path = "{name}-Src_{img}-Lvl_{lvl}-Rng_{wr_pre}_{wr_post}-TH_{th}_{fth}-Ref_{ni}".format(
+    loc_path = "{name}-Src_{img}-Lvl_{lvl}-Rng_{wr_pre}_{wr_post}-TH_{th}_{fth}-Ref_{ni}-NhS_{nhs}".format(
         name=name,
         img="".join(img_path.split(".")[:-1]),
         lvl=number_of_weapons,
@@ -185,7 +196,8 @@ def generate_images(
         wr_post=weapon_range[1],
         th=loss_threshold,
         fth=fixed_threshold,
-        ni=new_image
+        ni=new_image,
+        nhs=nh_seed,
     )
 
     print(">>> " + loc_path)
@@ -315,6 +327,7 @@ def generate_images(
                     loss_threshold=loss_threshold,
                     overlap_x=overlap_x,
                     overlap_y=overlap_y,
+                    nh_seed=nh_seed,
                 )
             )
             finished_pixels += 1
@@ -414,6 +427,14 @@ if __name__ == "__main__":
         type=int
     )
     parser.add_argument(
+        "--nh-seed",
+        metavar="SEED",
+        dest="nh_seed",
+        help='Neighbourhood seed: Which neighbours are able to attack the current pixel. Default: "01010101" ("{top-left}{top}{top-right}{right}{right-bottom}{bottom}{left-bottom}{left}"). Input is padded with 0 to len()=8 or cut off after 8.',
+        default="01010101",
+        type=str
+    )
+    parser.add_argument(
         "--new-image",
         metavar="NEW_IMAGE",
         dest="new_image",
@@ -423,6 +444,8 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    _nhs = args.nh_seed
+    args.nh_seed = str(_nhs + "0"*max(0, 8 - len(_nhs)))[:8]
     print(args)
 
     generate_images(
@@ -436,5 +459,6 @@ if __name__ == "__main__":
         fixed_threshold=args.fixed_threshold,
         overlap_x=args.overlap_x,
         overlap_y=args.overlap_y,
+        nh_seed=args.nh_seed,
         new_image=args.new_image
     )
