@@ -188,7 +188,7 @@ def generate_images(
     print("> Discretizing image to {} levels: \n  : {}".format(number_of_weapons, weapons))
 
     # Create out folder
-    loc_path = "{name}-Src_{img}-Lvl_{lvl}-Rng_{wr_pre}_{wr_post}-TH_{th}_{fth}-Ref_{ni}-NhS_{nhs}".format(
+    loc_path = "{name}-Src_{img}-Lvl_{lvl}-Rng_{wr_pre}_{wr_post}-TH_{th}_{fth}-Ref_{ni}-NhS_{nhs}-wXY_{wx}_{wy}".format(
         name=name,
         img="".join(img_path.split(".")[:-1]),
         lvl=number_of_weapons,
@@ -198,6 +198,8 @@ def generate_images(
         fth=fixed_threshold,
         ni=new_image,
         nhs=nh_seed,
+        wx=int(overlap_x),
+        wy=int(overlap_y),
     )
 
     print(">>> " + loc_path)
