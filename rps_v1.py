@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
+NUM_NEIGHBOURS = 8
+
 def defend(own_weapon, enemy_weapon, number_of_weapons, weapon_range):
     # survive same color
     if own_weapon == enemy_weapon:
@@ -20,7 +23,7 @@ def defend_against_neighbours(
     number_of_weapons, weapon_range,
     loss_threshold,
     overlap_x=True, overlap_y=True,
-    nh_seed="01010101"
+    nh_seed="01010101", nh_order="01234567",
 ):
     """Get the values from all neighbours
 
@@ -123,7 +126,8 @@ def defend_against_neighbours(
         ),
     ]
 
-    for attacker in attackers:
+    for order_to_neighbour in nh_order:
+        attacker = attackers[int(order_to_neighbour)]
         if attacker[0]:
             enemy_weapon = src.getpixel(attacker[1])
             won = defend(
@@ -168,6 +172,7 @@ def generate_images(
     overlap_x,
     overlap_y,
     nh_seed,
+    nh_order,
     new_image
 ):
     print("Running imca: rock-paper-scissor\n")
@@ -178,6 +183,9 @@ def generate_images(
     print("> Overlap-x:\n  : " + str(overlap_x))
     print("> Overlap-y:\n  : " + str(overlap_y))
     print("> Neighbourhood-Seed:\n  : " + str(nh_seed))
+    print("> Neighbourhood-Order:")
+    for i in range(len(nh_order)):
+        print("  #{} -> NH-Index-{}".format(i, nh_order[i]))
     print("> New image:\n  : " + str(new_image))
 
     print("> Loading image: " + img_path)
@@ -188,7 +196,7 @@ def generate_images(
     print("> Discretizing image to {} levels: \n  : {}".format(number_of_weapons, weapons))
 
     # Create out folder
-    loc_path = "{name}-Src_{img}-Lvl_{lvl}-Rng_{wr_pre}_{wr_post}-TH_{th}_{fth}-Ref_{ni}-NhS_{nhs}-wXY_{wx}_{wy}".format(
+    loc_path = "{name}-Src_{img}-Lvl_{lvl}-Rng_{wr_pre}_{wr_post}-TH_{th}_{fth}-Ref_{ni}-NhS_{nhs}-NhO_{nho}-wXY_{wx}_{wy}".format(
         name=name,
         img="".join(img_path.split(".")[:-1]),
         lvl=number_of_weapons,
@@ -198,6 +206,7 @@ def generate_images(
         fth=fixed_threshold,
         ni=new_image,
         nhs=nh_seed,
+        nho=nh_order,
         wx=int(overlap_x),
         wy=int(overlap_y),
     )
@@ -330,6 +339,7 @@ def generate_images(
                     overlap_x=overlap_x,
                     overlap_y=overlap_y,
                     nh_seed=nh_seed,
+                    nh_order=nh_order,
                 )
             )
             finished_pixels += 1
@@ -432,7 +442,7 @@ if __name__ == "__main__":
         "--nh-seed",
         metavar="SEED",
         dest="nh_seed",
-        help='Neighbourhood seed: Which neighbours are able to attack the current pixel. Default: "01010101" ("{top-left}{top}{top-right}{right}{right-bottom}{bottom}{left-bottom}{left}"). Input is padded with 0 to len()=8 or cut off after 8.',
+        help='Neighbourhood seed: Which neighbours are able to attack the current pixel. Default: "01010101" ("{top-left}{top}{top-right}{right}{right-bottom}{bottom}{left-bottom}{left}"). Input is padded with 0 to len()=str(NUM_NEIGHBOURS) or cut off after "+str(NUM_NEIGHBOURS)".',
         default="01010101",
         type=str
     )
@@ -444,10 +454,63 @@ if __name__ == "__main__":
         default=1,
         type=int
     )
+    parser.add_argument(
+        "--nh-order",
+        metavar="ORDER",
+        dest="nh_order",
+        help='Neighbourhood ordering number: In which order neighbours are defended against. Default: "01234567" ("{top-left}{top}{top-right}{right}{right-bottom}{bottom}{left-bottom}{left}"). Input is padded with the remaining numbers in ascending order. Double numbers may not be entered. Only the "+str(NUM_NEIGHBOURS)+" first chars are kept.',
+        default="01234567",
+        type=str
+    )
 
     args = parser.parse_args()
+
+    # Neighbourhood indexes:
+    # +-----+
+    # | 012 |
+    # | 7.3 |
+    # | 654 |
+    # +-----+
+
+    # Turn on or of neighbours ability to attack
     _nhs = args.nh_seed
-    args.nh_seed = str(_nhs + "0"*max(0, 8 - len(_nhs)))[:8]
+    args.nh_seed = str(_nhs + "0"*max(0, NUM_NEIGHBOURS - len(_nhs)))[:NUM_NEIGHBOURS]
+
+    # Change the order of attack by defining their position in the order by index
+    _nho = args.nh_order
+    _nho = str(_nho[:max(len(_nho), NUM_NEIGHBOURS)])
+
+    # Keep track of unfilled with None
+    order_mapping = [None]*NUM_NEIGHBOURS
+    # Itterate over the neighbourhood index
+    for neighbour_index in range(len(_nho)):
+        _char = _nho[neighbour_index]
+        if order_mapping[int(_char)] is not None:
+            # The positions assigned by the argument have to be unique
+            raise ValueError("No double values: {} at index {}".format(_char, neighbour_index))
+        elif int(_char) > NUM_NEIGHBOURS - 1:
+            raise ValueError("Ordering number can not exceed number of neighbours: {} > {}".format(_char, NUM_NEIGHBOURS))
+        else:
+            # The first position of the _nho defines the ordering of the top-left corner ...
+            # Use this ordering number to index the current i (top-left ...).
+            order_mapping[int(_char)] = neighbour_index
+
+    def first_remaining_ordering_number(order_mapping):
+        for ordering_number in range(NUM_NEIGHBOURS):
+            if order_mapping[ordering_number] is None:
+                return ordering_number
+
+    # if not all indexes were ordered
+    num_unordered = NUM_NEIGHBOURS - len(_nho)
+    if num_unordered > 0:
+        # add the remaining ordering numbers to the last neighbourhood indexes
+        first_unordered = len(_nho)
+        for offset in range(num_unordered):
+            # find the first remaining ordering number
+            ordering_number = first_remaining_ordering_number(order_mapping)
+            print("{}: {} + {}".format(ordering_number, first_unordered, offset))
+            order_mapping[ordering_number] = first_unordered + offset
+
     print(args)
 
     generate_images(
@@ -462,5 +525,6 @@ if __name__ == "__main__":
         overlap_x=args.overlap_x,
         overlap_y=args.overlap_y,
         nh_seed=args.nh_seed,
+        nh_order="".join(str(i) for i in order_mapping),
         new_image=args.new_image
     )
